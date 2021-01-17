@@ -107,8 +107,7 @@ def print_cffs_as_cpp_array(cffs_arr):
 
 
 if __name__ == '__main__':
-    data = load_data('sunset.jpg', transpose=True)
-    # print_acs(data)
+    data = load_data('StockSnap_7QH4K6AESO.jpg', transpose=True)
 
     (dataset, values) = derive_dataset(data)
 
@@ -121,4 +120,4 @@ if __name__ == '__main__':
         _ = plt.plot(cffs[i + points_len], 'b', label=f'Point {p}; color 1 (Cb)')
         _ = plt.plot(cffs[i + 2 * points_len], 'r', label=f'Point {p}; color 2 (Cr)')
         _ = plt.legend()
-        plt.show()
+        plt.savefig(f'ac{p}.png')
