@@ -10,24 +10,26 @@ def print_acs(data):
     for c in range(3):
         for y in range(height):
             for x in range(width):
-                print(f"(c={c}, bx={x}, by={y}) block values:")
+                print(f'(c={c}, bx={x}, by={y}) block values:')
                 for j in range(8):
                     for i in range(8):
-                        print(f"{data[c][y][x][j][i]:8}", end='')
+                        print(f'{data[c][y][x][j][i]:8}', end='')
                     print()
 
 
-def load_data(fname):
+def load_data(fname, *, transpose):
     arr = parse(fname, normalize=True, quality=100, subsampling='keep', upsample=True, stack=True)
     height = arr.shape[1]
     width = arr.shape[2]
     data = np.zeros([3, height, width, 8, 8], dtype=int)
 
-    with Bar('Transposing blocks...', max=3 * height * width) as bar:
+    with Bar('Loading & transposing blocks...', max=3 * height * width) as bar:
         for c in range(3):
             for y in range(height):
                 for x in range(width):
-                    data[c][y][x] = np.transpose(np.reshape(arr[c][y][x], (8, 8)))
+                    data[c][y][x] = np.reshape(arr[c][y][x], (8, 8))
+                    if transpose:
+                        data[c][y][x] = data[c][y][x].T
                     bar.next()
 
     return data
@@ -69,20 +71,31 @@ def derive_cffs(dataset, values):
                 vals = values[c][p::64]
                 res = np.linalg.lstsq(args, vals)
                 cffs_arr[c * points_len + i] = res[0]
-                cffs_str = ', '.join(map(lambda x: f"{x:.9f}", res[0]))
-                print(f"c={c}, p={p} | { {cffs_str} }")
                 bar.next()
 
     return cffs_arr
 
 
+def print_cffs_as_cpp_array(cffs_arr):
+    print('const float coeffs[3][4][16] = {')
+    for c in range(3):
+        print('\t{')
+        for i in range(points_len):
+            cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs_arr[c * points_len + i]))
+            print(f'\t\t{ {cffs_str} },'.replace('\'', ''))
+        print('\t},')
+    print('};')
+
+
 if __name__ == '__main__':
-    data = load_data('other.jpg')
+    data = load_data('sunset.jpg', transpose=True)
     # print_acs(data)
 
     (dataset, values) = derive_dataset(data)
 
     cffs = derive_cffs(dataset, values)
+    print_cffs_as_cpp_array(cffs)
+
     for i in range(points_len):
         p = points[i]
         _ = plt.plot(cffs[i], 'k', label=f'Point {p}; color 0 (Y)')
