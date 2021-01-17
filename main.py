@@ -1,3 +1,5 @@
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import threading
@@ -86,33 +88,41 @@ def derive_cffs(dataset, values):
 
     return cffs_arr
 
+
 def derive_cffs_impl(dataset, values, cffs_arr, c):
     for i in range(points_len):
         p = points[i]
         args = dataset[c][p::64]
         vals = values[c][p::64]
-        res = np.linalg.lstsq(args, vals)
+        res = np.linalg.lstsq(args, vals, rcond=None)
         cffs_arr[c * points_len + i] = res[0]
 
 
 def print_cffs_as_cpp_array(cffs_arr):
-    print('const float coeffs[3][4][16] = {')
+    out = [f'const float coeffs[3][{points_len}][16] = {{']
     for c in range(3):
-        print('\t{')
+        out.append('\t{')
         for i in range(points_len):
             cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs_arr[c * points_len + i]))
-            print(f'\t\t{ {cffs_str} },'.replace('\'', ''))
-        print('\t},')
-    print('};')
+            out.append(f'\t\t{ {cffs_str} },'.replace('\'', ''))
+        out.append('\t},')
+    out.append('};')
+    return '\n'.join(out)
 
 
 if __name__ == '__main__':
-    data = load_data('StockSnap_7QH4K6AESO.jpg', transpose=True)
+    # data = load_data('StockSnap_7QH4K6AESO.jpg', transpose=True)
+    data = load_data('other.jpg', transpose=True)
 
     (dataset, values) = derive_dataset(data)
 
     cffs = derive_cffs(dataset, values)
-    print_cffs_as_cpp_array(cffs)
+
+    out = print_cffs_as_cpp_array(cffs)
+    time_seconds = time.time()
+    with open(f'cpp_array_{time_seconds}.txt', 'w') as f:
+        f.write(out)
+        f.close()
 
     for i in range(points_len):
         p = points[i]
@@ -120,4 +130,5 @@ if __name__ == '__main__':
         _ = plt.plot(cffs[i + points_len], 'b', label=f'Point {p}; color 1 (Cb)')
         _ = plt.plot(cffs[i + 2 * points_len], 'r', label=f'Point {p}; color 2 (Cr)')
         _ = plt.legend()
-        plt.savefig(f'ac{p}.png')
+        plt.savefig(f'ac{p}_{time_seconds}.png')
+        plt.clf()
