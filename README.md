@@ -8,13 +8,17 @@ The following input image from https://stocksnap.io/ has been used:
 
 ![Input image](StockSnap_7QH4K6AESO.jpg)
 
-## AC0
-![Image "other.jpg", AC 0](plots/other_0.png)
-## AC1
-![Image "other.jpg", AC 1](plots/other_1.png)
-## AC8
-![Image "other.jpg", AC 8](plots/other_8.png)
-## AC9
-![Image "other.jpg", AC 9](plots/other_9.png)
+## Coefficient values coming from linear regression by AC 
+
+ _ | 0 | 1
+---|---|---
+ 0 | ![Image "ac0_chart.png", AC 0](imgs/ac0_chart.png) | ![Image "ac1_chart.png", AC 1](imgs/ac1_chart.png)
+ 1 | ![Image "ac8_chart.png", AC 8](imgs/ac8_chart.png) | ![Image "ac9_chart.png", AC 9](imgs/ac9_chart.png)
+
+---
+
+## COMPRESSION results 
+
+See [COMPRESSION-RESULTS.md](COMPRESSION-RESULTS.md).
 
 Kudos for [@krinfels](https://github.com/krinfels) for cooperation.
