@@ -1,25 +1,7 @@
 import numpy as np
-from jpeg import parse
-from progress.bar import Bar
 from sklearn.cross_decomposition import CCA
 
-
-def load_data(fname, *, transpose):
-    arr = parse(fname, normalize=True, quality=100, subsampling='keep', upsample=True, stack=True)
-    height = arr.shape[1]
-    width = arr.shape[2]
-    data = np.zeros([3, height, width, 8, 8], dtype=int)
-
-    with Bar('Loading & transposing blocks...', max=3 * height * width) as bar:
-        for c in range(3):
-            for y in range(height):
-                for x in range(width):
-                    data[c][y][x] = np.reshape(arr[c][y][x], (8, 8))
-                    if transpose:
-                        data[c][y][x] = data[c][y][x].T
-                    bar.next()
-
-    return data
+from commons import load_data
 
 
 def perform(arrs):
@@ -50,8 +32,9 @@ def perform(arrs):
 
 if __name__ == '__main__':
     images = [
-        'other.jpg',
-        # 'sunset.jpg'
+        # 'other.jpg',
+        # 'sunset.jpg',
+        'StockSnap_7QH4K6AESO.jpg'
     ]
     data = [load_data(img, transpose=True) for img in images]
     perform(data)

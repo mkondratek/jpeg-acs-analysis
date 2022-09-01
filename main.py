@@ -1,10 +1,11 @@
+import os
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import threading
-from jpeg import parse
-from progress.bar import Bar
+
+from commons import load_data
 
 
 def print_acs(data):
@@ -18,24 +19,6 @@ def print_acs(data):
                     for i in range(8):
                         print(f'{data[c][y][x][j][i]:8}', end='')
                     print()
-
-
-def load_data(fname, *, transpose):
-    arr = parse(fname, normalize=True, quality=100, subsampling='keep', upsample=True, stack=True)
-    height = arr.shape[1]
-    width = arr.shape[2]
-    data = np.zeros([3, height, width, 8, 8], dtype=int)
-
-    with Bar('Loading & transposing blocks...', max=3 * height * width) as bar:
-        for c in range(3):
-            for y in range(height):
-                for x in range(width):
-                    data[c][y][x] = np.reshape(arr[c][y][x], (8, 8))
-                    if transpose:
-                        data[c][y][x] = data[c][y][x].T
-                    bar.next()
-
-    return data
 
 
 def derive_dataset(data):
@@ -110,25 +93,29 @@ def print_cffs_as_cpp_array(cffs_arr):
     return '\n'.join(out)
 
 
-if __name__ == '__main__':
-    # data = load_data('StockSnap_7QH4K6AESO.jpg', transpose=True)
-    data = load_data('other.jpg', transpose=True)
-
+def run(jpg):
+    wd = jpg.replace('.', '_')
+    os.mkdir(wd)
+    data = load_data(jpg, transpose=True)
     (dataset, values) = derive_dataset(data)
-
     cffs = derive_cffs(dataset, values)
-
     out = print_cffs_as_cpp_array(cffs)
-    time_seconds = time.time()
-    with open(f'cpp_array_{time_seconds}.txt', 'w') as f:
+    with open(f'{wd}/cpp_array.txt', 'w') as f:
         f.write(out)
-        f.close()
-
     for i in range(points_len):
         p = points[i]
         _ = plt.plot(cffs[i], 'k', label=f'Point {p}; color 0 (Y)')
         _ = plt.plot(cffs[i + points_len], 'b', label=f'Point {p}; color 1 (Cb)')
         _ = plt.plot(cffs[i + 2 * points_len], 'r', label=f'Point {p}; color 2 (Cr)')
         _ = plt.legend()
-        plt.savefig(f'ac{p}_{time_seconds}.png')
+        plt.savefig(f'{wd}/ac{p}.png')
         plt.clf()
+
+
+def main():
+    for jpg in os.listdir('input'):
+        run(jpg)
+
+
+if __name__ == '__main__':
+    main()
