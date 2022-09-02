@@ -1,9 +1,9 @@
 import os
+import threading
 from os.path import basename
 
 import matplotlib.pyplot as plt
 import numpy as np
-import threading
 
 from commons import load_data
 
@@ -26,68 +26,46 @@ def print_acs(data):
 
 
 def derive_dataset(data):
-    height = data.shape[1]
-    width = data.shape[2]
-    dataset = np.zeros((3, height - 1, width - 1, points_len, 16), dtype=int)
-    values = np.zeros((3, height - 1, width - 1, points_len), dtype=int)
-    threads = []
+    height = data.shape[0]
+    width = data.shape[1]
+    dataset = np.zeros((height - 1, width - 1, points_len, 16), dtype=int)
+    values = np.zeros((height - 1, width - 1, points_len), dtype=int)
 
-    for c in range(3):
-        thread = threading.Thread(target=derive_dataset_impl, args=(data, dataset, values, c))
-        threads.append(thread)
-        thread.start()
-
-    for c in range(3):
-        threads[c].join()
+    derive_dataset_impl(data, dataset, values)
 
     m = (height - 1) * (width - 1) * points_len
-    return (dataset.reshape(3, m, 16), values.reshape(3, m))
+    return (dataset.reshape(m, 16), values.reshape(m))
 
 
-def derive_dataset_impl(data, dataset, values, c):
-    height = data.shape[1]
-    width = data.shape[2]
+def derive_dataset_impl(data, dataset, values):
+    height = data.shape[0]
+    width = data.shape[1]
 
     for y in range(1, height):
         for x in range(1, width):
             for k, p in enumerate(points):
                 j = p // 8
                 i = p % 8
-                left_acs = data[c, y, x - 1, j]
-                top_acs = data[c, y - 1, x, :, i]
-                dataset[c, y - 1, x - 1, k] = np.concatenate((left_acs, top_acs), axis=None)
-                values[c, y - 1, x - 1, k] = data[c, y, x, j, i]
+                left_acs = data[y, x - 1, j]
+                top_acs = data[y - 1, x, :, i]
+                dataset[y - 1, x - 1, k] = np.concatenate((left_acs, top_acs), axis=None)
+                values[y - 1, x - 1, k] = data[y, x, j, i]
 
 
-def derive_cffs(dataset, values):
-    threads = []
-    cffs_arr = np.zeros((3 * points_len, 16))
-
-    for c in range(3):
-        thread = threading.Thread(target=derive_cffs_impl, args=(dataset, values, cffs_arr, c))
-        threads.append(thread)
-        thread.start()
-
-    for c in range(3):
-        threads[c].join()
-
-    return cffs_arr
-
-
-def derive_cffs_impl(dataset, values, cffs_arr, c):
+def derive_cffs(dataset, values, cffs):
     for i, p in enumerate(points):
-        args = dataset[c][i::points_len]
-        vals = values[c][i::points_len]
+        args = dataset[i::points_len]
+        vals = values[i::points_len]
         res = np.linalg.lstsq(args, vals, rcond=None)
-        cffs_arr[c * points_len + i] = res[0]
+        cffs[i] = res[0]
 
 
-def print_cffs_as_cpp_array(cffs_arr):
+def print_cffs_as_cpp_array(cffs):
     out = [f'const float coeffs[3][{points_len}][16] = {{']
     for c in range(3):
         out.append('\t{')
         for i in range(points_len):
-            cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs_arr[c * points_len + i]))
+            cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs[c][i]))
             out.append(f'\t\t{ {cffs_str} },'.replace('\'', ''))
         out.append('\t},')
     out.append('};')
@@ -99,17 +77,31 @@ def run(jpg):
     if os.path.exists(wd):
         return
     os.mkdir(wd)
+
     data = load_data(jpg, transpose=True)
-    (dataset, values) = derive_dataset(data)
-    cffs = derive_cffs(dataset, values)
+    cffs = np.zeros((3, points_len, 16))
+    threads = []
+
+    for c in [0, 1, 2]:
+        def run(channel):
+            (dataset, values) = derive_dataset(data[channel])
+            derive_cffs(dataset, values, cffs[channel])
+
+        thread = threading.Thread(target=run, args=(c,))
+        thread.start()
+        threads.append(thread)
+
+    for t in threads:
+        t.join()
+
     out = print_cffs_as_cpp_array(cffs)
     with open(f'{wd}/cpp_array.txt', 'w') as f:
         f.write(out)
-    for i in range(points_len):
-        p = points[i]
-        _ = plt.plot(cffs[i], 'k', label=f'Point {p}; color 0 (Y)')
-        _ = plt.plot(cffs[i + points_len], 'b', label=f'Point {p}; color 1 (Cb)')
-        _ = plt.plot(cffs[i + 2 * points_len], 'r', label=f'Point {p}; color 2 (Cr)')
+
+    for i, p in enumerate(points):
+        _ = plt.plot(cffs[0][i], 'k', label=f'Point {p}; color 0 (Y)')
+        _ = plt.plot(cffs[1][i], 'b', label=f'Point {p}; color 1 (Cb)')
+        _ = plt.plot(cffs[2][i], 'r', label=f'Point {p}; color 2 (Cr)')
         _ = plt.legend()
         plt.savefig(f'{wd}/ac{p}.png')
         plt.clf()
