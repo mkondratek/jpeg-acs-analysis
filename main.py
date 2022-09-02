@@ -78,8 +78,6 @@ def derive_cffs_impl(dataset, values, cffs_arr, c):
     for i, p in enumerate(points):
         args = dataset[c][i::points_len]
         vals = values[c][i::points_len]
-        np.savetxt(f'args_{i}.csv', args, delimiter=',')
-        np.savetxt(f'vals_{i}.csv', vals, delimiter=',')
         res = np.linalg.lstsq(args, vals, rcond=None)
         cffs_arr[c * points_len + i] = res[0]
 

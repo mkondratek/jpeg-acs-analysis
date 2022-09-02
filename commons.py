@@ -2,11 +2,9 @@ import numpy as np
 import tensorflow as tf
 import torchjpeg.codec
 from progress.bar import Bar
-# from jpeg import parse
 
 
 def load_data(fname, *, transpose):
-    # arr = parse(fname, normalize=True, quality=100, subsampling='keep', upsample=True, stack=True)
 
     dimensions, quantization, Y_coefficients, CbCr_coefficients = torchjpeg.codec.read_coefficients(fname)
     arr = tf.concat([Y_coefficients, CbCr_coefficients], 0)
