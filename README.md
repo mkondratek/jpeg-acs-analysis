@@ -26,3 +26,7 @@ are the dataset for the linear regression.
 See [COMPRESSION-RESULTS.md](COMPRESSION-RESULTS.md).
 
 Kudos for [@krinfels](https://github.com/krinfels) for cooperation.
+
+## Deps 
+
+https://github.com/jurandy-almeida/jpeg
