@@ -4,6 +4,26 @@ import tensorflow as tf
 import torchjpeg.codec
 from progress.bar import Bar
 import cv2
+from jpeg import parse
+
+
+def load_jpeg(fname, *, transpose):
+    arr = parse(fname, normalize=True, quality=100, subsampling='keep', upsample=True, stack=True)
+    height = arr.shape[1]
+    width = arr.shape[2]
+    data = np.zeros([3, height, width, 8, 8], dtype=int)
+
+    with Bar('Loading & transposing blocks...', max=3 * height * width) as bar:
+        for c in range(3):
+            for y in range(height):
+                for x in range(width):
+                    data[c][y][x] = np.reshape(arr[c][y][x], (8, 8))
+                    if transpose:
+                        data[c][y][x] = data[c][y][x].T
+                    bar.next()
+
+    return data
+
 
 rgb2lms = np.array([
     [17.8824, 43.5161, 4.1194],
