@@ -60,20 +60,32 @@ def derive_cffs(dataset, values, cffs):
         cffs[i] = res[0]
 
 
-def print_cffs_as_cpp_array(cffs):
-    out = [f'const float coeffs[3][{points_len}][16] = {{']
-    for c in range(3):
-        out.append('\t{')
-        for i in range(points_len):
-            cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs[c][i]))
-            out.append(f'\t\t{ {cffs_str} },'.replace('\'', ''))
-        out.append('\t},')
-    out.append('};')
-    return '\n'.join(out)
+def write_cffs_as_cpp_array(wd, cffs):
+    with open(f'{wd}/cpp_array.txt', 'w') as f:
+        out = [f'const float coeffs[3][{points_len}][16] = {{']
+        for c in range(3):
+            out.append('\t{')
+            for i in range(points_len):
+                cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs[c][i]))
+                out.append(f'\t\t{ {cffs_str} },'.replace('\'', ''))
+            out.append('\t},')
+        out.append('};')
+        f.write('\n'.join(out))
+
+
+def write_cffs_as_plain_numbers(wd, cffs):
+    with open(f'{wd}/{wd}.txt', 'w') as f:
+        out = []
+        for c in range(3):
+            for i in range(points_len):
+                cffs_str = ' '.join(map(lambda x: f'{x:.9f}', cffs[c][i]))
+                out.append(cffs_str.replace('\'', ''))
+        f.write('\n'.join(out))
 
 
 def run(jpg):
     wd = basename(jpg).replace('.', '_')
+    wd = f'coeffs/{wd}'
     if os.path.exists(wd):
         return
     os.mkdir(wd)
@@ -94,9 +106,8 @@ def run(jpg):
     for t in threads:
         t.join()
 
-    out = print_cffs_as_cpp_array(cffs)
-    with open(f'{wd}/cpp_array.txt', 'w') as f:
-        f.write(out)
+    write_cffs_as_cpp_array(wd, cffs)
+    write_cffs_as_plain_numbers(wd, cffs)
 
     for i, p in enumerate(points):
         _ = plt.plot(cffs[0][i], 'k', label=f'Point {p}; color 0 (Y)')
@@ -109,6 +120,7 @@ def run(jpg):
 
 def main():
     for jpg in os.listdir('input'):
+        print(f'Processing input/{jpg}...')
         run(f'input/{jpg}')
 
 

@@ -5,7 +5,6 @@ from progress.bar import Bar
 
 
 def load_data(fname, *, transpose):
-
     dimensions, quantization, Y_coefficients, CbCr_coefficients = torchjpeg.codec.read_coefficients(fname)
     arr = tf.concat([Y_coefficients, CbCr_coefficients], 0)
     height = Y_coefficients.shape[1]
