@@ -11,22 +11,12 @@ points = [0, 1, 8, 9]
 points_len = len(points)
 
 
-def load_jpeg(fname, *, transpose=False, channel=None):
+def load_jpeg(fname, *, transpose=False):
     arr = parse(fname, normalize=False, quality=100, subsampling='4:4:4', upsample=False, stack=True)
     height = arr.shape[1]
     width = arr.shape[2]
     data = np.zeros([3, height, width, 8, 8], dtype=int)
     c_map = {0: 1, 1: 0, 2: 2}
-
-    if channel:
-        with Bar('Loading & transposing blocks...', max=height * width) as bar:
-            for y in range(height):
-                for x in range(width):
-                    data[channel][y][x] = np.reshape(arr[channel][y][x], (8, 8))
-                    if transpose:
-                        data[channel][y][x] = data[channel][y][x].T
-                    bar.next()
-        return data
 
     with Bar('Loading & transposing blocks...', max=3 * height * width) as bar:
         for c in range(3):
@@ -35,15 +25,11 @@ def load_jpeg(fname, *, transpose=False, channel=None):
                     data[c][y][x] = np.reshape(arr[c_map.get(c)][y][x], (8, 8))
                     if transpose:
                         data[c][y][x] = data[c][y][x].T
-                    bar.next()
 
-    # for c in [1, 0, 2]:
-    #     for y in range(height):
-    #         for x in range(width):
-    #             print(f'bx={x} by={y} c={c}:')
-    #             for b in range(8):
-    #                 print(*data[c][y][x][b], sep=' ', end='')
-    #                 print()
+                    # The dct[0][0] (idc) cannot be used in libjxl ac prediction for some reason.
+                    # Let's do not include it as a factor here then.
+                    data[c][y][x][0][0] = 0
+                    bar.next()
 
     return data
 
