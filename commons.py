@@ -6,6 +6,9 @@ from progress.bar import Bar
 import cv2
 from jpeg import parse
 
+points = [0, 1, 8, 9]
+
+points_len = len(points)
 
 def load_jpeg(fname, *, transpose):
     arr = parse(fname, normalize=True, quality=100, subsampling='keep', upsample=True, stack=True)
@@ -21,6 +24,14 @@ def load_jpeg(fname, *, transpose):
                     if transpose:
                         data[c][y][x] = data[c][y][x].T
                     bar.next()
+
+    # for c in [1, 0, 2]:
+    #     for y in range(height):
+    #         for x in range(width):
+    #             print(f'bx={x} by={y} c={c}:')
+    #             for b in range(8):
+    #                 print(*data[c][y][x][b], sep=' ', end='')
+    #                 print()
 
     return data
 
@@ -85,3 +96,66 @@ def load_data(fname, *, transpose):
                     bar.next()
 
     return data
+
+
+def derive_dataset(data):
+    height = data.shape[0]
+    width = data.shape[1]
+    dataset = np.zeros((height - 1, width - 1, points_len, 16), dtype=int)
+    values = np.zeros((height - 1, width - 1, points_len), dtype=int)
+
+    derive_dataset_impl(data, dataset, values)
+
+    m = (height - 1) * (width - 1) * points_len
+    return (dataset.reshape(m, 16), values.reshape(m))
+
+
+def derive_dataset_impl(data, dataset, values):
+    height = data.shape[0]
+    width = data.shape[1]
+
+    for y in range(1, height):
+        for x in range(1, width):
+            for k, p in enumerate(points):
+                j = p // 8
+                i = p % 8
+                left_acs = data[y, x - 1, j]
+                top_acs = data[y - 1, x, :, i]
+                dataset[y - 1, x - 1, k] = np.concatenate((left_acs, top_acs), axis=None)
+                values[y - 1, x - 1, k] = data[y, x, j, i]
+
+
+def write_cffs_as_cpp_array(wd, cffs):
+    with open(f'{wd}/cpp_array.txt', 'w') as f:
+        out = [f'const float coeffs[3][{points_len}][16] = {{']
+        for c in range(3):
+            out.append('\t{')
+            for i in range(points_len):
+                cffs_str = ', '.join(map(lambda x: f'{x:.9f}', cffs[c][i]))
+                out.append(f'\t\t{ {cffs_str} },'.replace('\'', ''))
+            out.append('\t},')
+        out.append('};')
+        f.write('\n'.join(out))
+
+
+def write_cffs_as_plain_numbers(wd, jpg, cffs):
+    with open(f'{wd}/{jpg.replace(".", "_")}.txt', 'w') as f:
+        out = []
+        for c in range(3):
+            for i in range(points_len):
+                cffs_str = ' '.join(map(lambda x: f'{x:.9f}', cffs[c][i]))
+                out.append(cffs_str.replace('\'', ''))
+        f.write('\n'.join(out))
+
+
+def print_acs(data):
+    height = data.shape[1]
+    width = data.shape[2]
+    for c in range(3):
+        for y in range(height):
+            for x in range(width):
+                print(f'(c={c}, bx={x}, by={y}) block values:')
+                for j in range(8):
+                    for i in range(8):
+                        print(f'{data[c][y][x][j][i]:8}', end='')
+                    print()
